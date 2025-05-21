@@ -37,9 +37,8 @@ public class WebSecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Define AuthenticationManager as a bean
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
+    public AuthenticationManager authenticationManager(HttpSecurity http) {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
@@ -52,14 +51,20 @@ public class WebSecurityConfig {
         http
                 .cors().and()
                 .csrf(csrf -> csrf.disable())
-                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(unauthorizedHandler))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
+                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/animes").permitAll()
-                        .requestMatchers("/api/animes/*").permitAll()
-                        // Permitir acceso libre a swagger 3
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**").permitAll()
+                        // Endpoints públicos (no requieren autenticación)
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/api/animes",
+                                "/api/animes/*",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/webjars/**"
+                        ).permitAll()
+                        // Todo lo demás requiere autenticación
                         .anyRequest().authenticated()
                 );
 
