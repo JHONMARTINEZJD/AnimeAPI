@@ -1,7 +1,9 @@
 package com.animeapi;
 
+import com.animeapi.model.Anime;
 import com.animeapi.model.ERole;
 import com.animeapi.model.User;
+import com.animeapi.repository.AnimeRepository;
 import com.animeapi.repository.RoleRepository;
 import com.animeapi.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,8 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 import java.util.Set;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,6 +38,7 @@ class ApiFlowTests {
     @Autowired UserRepository users;
     @Autowired RoleRepository roles;
     @Autowired PasswordEncoder encoder;
+    @Autowired AnimeRepository animes;
 
     private String body(Object o) throws Exception {
         return json.writeValueAsString(o);
@@ -156,5 +161,82 @@ class ApiFlowTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("title", "Bleach", "rating", 11))))
                 .andExpect(status().isBadRequest());
+    }
+
+    private Long anime(String title) {
+        Anime a = new Anime();
+        a.setTitle(title);
+        return animes.save(a).getId();
+    }
+
+    private String userToken(String username) throws Exception {
+        register(username, "secret123");
+        return login(username, "secret123");
+    }
+
+    private long idOf(String path, String token) throws Exception {
+        String res = mvc.perform(get(path).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(res).get(0).get("id").asLong();
+    }
+
+    @Test
+    void resenasPublicasNoExponenDatosPrivadosDelAutor() throws Exception {
+        Long animeId = anime("Monster");
+        String token = userToken("tenma");
+        mvc.perform(post("/api/animes/" + animeId + "/review").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("score", 9, "comment", "Obra maestra"))))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/api/animes/" + animeId + "/reviews"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].user.username").value("tenma"))
+                .andExpect(jsonPath("$[0].user.password").doesNotExist())
+                .andExpect(jsonPath("$[0].user.email").doesNotExist())
+                .andExpect(jsonPath("$[0].user.roles").doesNotExist());
+    }
+
+    @Test
+    void nadieEditaNiBorraLaResenaDeOtro() throws Exception {
+        Long animeId = anime("Monster");
+        String duena = userToken("nina");
+        String otro = userToken("johan");
+        String res = mvc.perform(post("/api/animes/" + animeId + "/review").header("Authorization", "Bearer " + duena)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("score", 8))))
+                .andReturn().getResponse().getContentAsString();
+        long reviewId = json.readTree(res).get("id").asLong();
+
+        mvc.perform(put("/api/reviews/" + reviewId).header("Authorization", "Bearer " + otro)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("score", 1))))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/reviews/" + reviewId).header("Authorization", "Bearer " + otro))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void nadieBorraFavoritosNiListaDeOtro() throws Exception {
+        Long animeId = anime("Monster");
+        String duena = userToken("lotte");
+        String otro = userToken("roberto");
+        String auth = "Bearer " + duena;
+        mvc.perform(post("/api/animes/" + animeId + "/favorite").header("Authorization", auth))
+                .andExpect(status().isCreated());
+        mvc.perform(post("/api/animes/" + animeId + "/watchlist").header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("status", "WATCHING"))))
+                .andExpect(status().isCreated());
+
+        mvc.perform(delete("/api/favorites/" + idOf("/api/users/favorites", duena)).header("Authorization", "Bearer " + otro))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/watchlist/" + idOf("/api/users/watchlist", duena)).header("Authorization", "Bearer " + otro))
+                .andExpect(status().isForbidden());
+        // La lista de cada uno solo trae lo suyo.
+        mvc.perform(get("/api/users/favorites").header("Authorization", "Bearer " + otro))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
     }
 }

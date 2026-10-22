@@ -1,5 +1,6 @@
 package com.animeapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -25,6 +26,8 @@ public class Review {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Las reseñas son públicas: del autor solo se expone id y username.
+    @JsonIgnoreProperties({"email", "roles", "createdAt"})
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
