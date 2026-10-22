@@ -71,6 +71,19 @@ class ApiFlowTests {
     }
 
     @Test
+    void registroIgnoraRolAdminPedidoPorElCliente() throws Exception {
+        mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("username", "itachi", "email", "itachi@test.dev",
+                                "password", "secret123", "roles", Set.of("admin")))))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("username", "itachi", "password", "secret123"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles.length()").value(1))
+                .andExpect(jsonPath("$.roles[0]").value("ROLE_USER"));
+    }
+
+    @Test
     void registroRechazaUsuarioRepetido() throws Exception {
         register("sasuke", "secret123");
         mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
