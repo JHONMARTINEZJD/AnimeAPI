@@ -1,5 +1,7 @@
 # AnimeAPI
 
+[![ci](https://github.com/JHONMARTINEZJD/AnimeAPI/actions/workflows/ci.yml/badge.svg)](https://github.com/JHONMARTINEZJD/AnimeAPI/actions/workflows/ci.yml)
+
 API REST en **Spring Boot** para un catálogo de anime: series, personajes, géneros, estudios y
 actores de voz, con autenticación de usuarios, reseñas, favoritos y listas de seguimiento.
 
