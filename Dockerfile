@@ -1,5 +1,10 @@
-FROM amazoncorretto:17-alpine-jdk
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn -B -q dependency:go-offline
+COPY src src
+RUN mvn -B -q package -DskipTests
 
-COPY releases/AnimeAPI-0.0.1-SNAPSHOT.jar /animeapi-v1.jar
-
-ENTRYPOINT ["java", "-jar", "/animeapi-v1.jar"]
+FROM eclipse-temurin:17-jre-alpine
+COPY --from=build /app/target/AnimeAPI-0.0.1-SNAPSHOT.jar /animeapi.jar
+ENTRYPOINT ["java", "-jar", "/animeapi.jar"]
