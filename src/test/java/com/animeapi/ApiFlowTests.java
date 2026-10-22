@@ -182,7 +182,7 @@ class ApiFlowTests {
     }
 
     @Test
-    void resenasPublicasNoExponenDatosPrivadosDelAutor() throws Exception {
+    void resenasNoExponenDatosPrivadosDelAutorAOtrosUsuarios() throws Exception {
         Long animeId = anime("Monster");
         String token = userToken("tenma");
         mvc.perform(post("/api/animes/" + animeId + "/review").header("Authorization", "Bearer " + token)
@@ -190,7 +190,8 @@ class ApiFlowTests {
                         .content(body(Map.of("score", 9, "comment", "Obra maestra"))))
                 .andExpect(status().isCreated());
 
-        mvc.perform(get("/api/animes/" + animeId + "/reviews"))
+        // Cualquiera puede registrarse, así que otro usuario cualquiera es el atacante realista.
+        mvc.perform(get("/api/animes/" + animeId + "/reviews").header("Authorization", "Bearer " + userToken("curioso")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].user.username").value("tenma"))
                 .andExpect(jsonPath("$[0].user.password").doesNotExist())

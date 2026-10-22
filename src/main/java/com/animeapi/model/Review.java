@@ -26,7 +26,7 @@ public class Review {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Las reseñas son públicas: del autor solo se expone id y username.
+    // Las reseñas las lee cualquier usuario: del autor solo se expone id y username.
     @JsonIgnoreProperties({"email", "roles", "createdAt"})
     @ManyToOne
     @JoinColumn(name = "user_id")
